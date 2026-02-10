@@ -2,9 +2,7 @@
 
 A professional web application for estimating project costs, timelines, and analyzing risks using Monte Carlo simulation. Built with Python, Streamlit, and advanced project management algorithms.
 
-🔗 **[Live Demo](https://your-app-url.streamlit.app)** *(Update this after deployment)*
-
-![Project Screenshot](https://via.placeholder.com/800x400?text=Project+Cost+Analyzer) *(Replace with actual screenshot)*
+🔗 **[Live Demo](https://project-cost-analyzer.streamlit.app/)**
 
 ---
 
@@ -30,7 +28,7 @@ A professional web application for estimating project costs, timelines, and anal
 ## 🚀 Quick Start
 
 ### **Option 1: Use the Live App (Recommended)**
-Visit the [live demo](https://your-app-url.streamlit.app) - no installation required!
+Visit the [live demo](https://project-cost-analyzer.streamlit.app/) - no installation required!
 
 ### **Option 2: Run Locally**
 
@@ -221,9 +219,9 @@ Created as a portfolio project demonstrating:
 
 ## 📧 Contact
 
-Your Name - your.email@example.com
+Emmanuel Didymus Sebastian - emmanueldidymus@gmail.com
 
-Project Link: [https://github.com/yourusername/project-cost-analyzer](https://github.com/yourusername/project-cost-analyzer)
+Project Link: [https://github.com/emmadidymus/project-cost-analyzer](https://github.com/emmadidymus/project-cost-analyzer)
 
 ---
 

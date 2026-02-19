@@ -8,6 +8,8 @@ from src.project import Project, Task
 from src.calculator import ProjectCalculator
 from src.risk_simulator import RiskSimulator
 from src.visualizer import ProjectVisualizer
+from src.pdf_generator import PDFReportGenerator
+from src.gantt_chart import GanttChartGenerator
 import os
 
 
@@ -258,39 +260,90 @@ def main():
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-        # TAB 4: Charts
-        with tab4:
-            st.subheader("Visualization Charts")
+                # TAB 4: Charts & Reports
+                with tab4:
+                    col1, col2 = st.columns(2)
 
-            if st.button("📊 Generate All Charts", type="primary"):
-                with st.spinner("Generating charts..."):
-                    visualizer = ProjectVisualizer(project)
+                    with col1:
+                        st.subheader("📊 Visualization Charts")
 
-                    simulation_result = st.session_state.get('simulation_result', None)
-                    charts = visualizer.generate_all_charts(simulation_result)
+                        if st.button("Generate All Charts", type="primary", key="gen_charts"):
+                            with st.spinner("Generating charts..."):
+                                visualizer = ProjectVisualizer(project)
 
-                    st.session_state.charts = charts
+                                simulation_result = st.session_state.get('simulation_result', None)
+                                charts = visualizer.generate_all_charts(simulation_result)
 
-                st.success("✅ Charts generated!")
+                                st.session_state.charts = charts
 
-            if 'charts' in st.session_state:
-                charts = st.session_state.charts
+                            st.success("✅ Charts generated!")
 
-                # Display charts
-                if 'cost_breakdown' in charts and os.path.exists(charts['cost_breakdown']):
-                    st.image(charts['cost_breakdown'], caption="Cost Breakdown by Task")
+                        if 'charts' in st.session_state:
+                            charts = st.session_state.charts
 
-                if 'timeline_comparison' in charts and os.path.exists(charts['timeline_comparison']):
-                    st.image(charts['timeline_comparison'], caption="Timeline Comparison")
+                            # Display charts
+                            if 'cost_breakdown' in charts and os.path.exists(charts['cost_breakdown']):
+                                st.image(charts['cost_breakdown'], caption="Cost Breakdown by Task")
 
-                if 'critical_path' in charts and charts['critical_path'] and os.path.exists(charts['critical_path']):
-                    st.image(charts['critical_path'], caption="Critical Path")
+                            if 'timeline_comparison' in charts and os.path.exists(charts['timeline_comparison']):
+                                st.image(charts['timeline_comparison'], caption="Timeline Comparison")
 
-                if 'risk_distribution' in charts and os.path.exists(charts['risk_distribution']):
-                    st.image(charts['risk_distribution'], caption="Risk Distribution")
+                            if 'critical_path' in charts and charts['critical_path'] and os.path.exists(
+                                    charts['critical_path']):
+                                st.image(charts['critical_path'], caption="Critical Path")
 
-                if 'scenario_comparison' in charts and os.path.exists(charts['scenario_comparison']):
-                    st.image(charts['scenario_comparison'], caption="Scenario Comparison")
+                            if 'risk_distribution' in charts and os.path.exists(charts['risk_distribution']):
+                                st.image(charts['risk_distribution'], caption="Risk Distribution")
+
+                            if 'scenario_comparison' in charts and os.path.exists(charts['scenario_comparison']):
+                                st.image(charts['scenario_comparison'], caption="Scenario Comparison")
+
+                    with col2:
+                        st.subheader("📅 Gantt Chart")
+
+                        if st.button("Generate Gantt Chart", type="primary", key="gen_gantt"):
+                            with st.spinner("Creating Gantt chart..."):
+                                gantt_gen = GanttChartGenerator(project)
+                                gantt_fig = gantt_gen.generate_gantt_chart()
+
+                                st.session_state.gantt_fig = gantt_fig
+
+                            st.success("✅ Gantt chart created!")
+
+                        if 'gantt_fig' in st.session_state:
+                            st.plotly_chart(st.session_state.gantt_fig, use_container_width=True)
+
+                    # PDF Report section
+                    st.markdown("---")
+                    st.subheader("📄 PDF Report")
+
+                    if st.button("📥 Generate PDF Report", type="primary", key="gen_pdf"):
+                        with st.spinner("Generating PDF report..."):
+                            pdf_gen = PDFReportGenerator(project)
+
+                            simulation_result = st.session_state.get('simulation_result', None)
+                            simulator = st.session_state.get('simulator', None)
+                            charts = st.session_state.get('charts', None)
+
+                            pdf_path = pdf_gen.generate_full_report(
+                                simulation_result=simulation_result,
+                                simulator=simulator,
+                                chart_paths=charts
+                            )
+
+                            st.session_state.pdf_path = pdf_path
+
+                        st.success(f"✅ PDF report generated!")
+
+                    if 'pdf_path' in st.session_state:
+                        with open(st.session_state.pdf_path, 'rb') as pdf_file:
+                            st.download_button(
+                                label="📥 Download PDF Report",
+                                data=pdf_file,
+                                file_name=os.path.basename(st.session_state.pdf_path),
+                                mime='application/pdf',
+                                type="primary"
+                            )
 
     except Exception as e:
         st.error(f"Error: {e}")

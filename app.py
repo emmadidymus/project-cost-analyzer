@@ -9,7 +9,7 @@ from src.calculator import ProjectCalculator
 from src.risk_simulator import RiskSimulator
 from src.visualizer import ProjectVisualizer
 from src.pdf_generator import PDFReportGenerator
-from src.gantt_chart import GanttChartGenerator
+from src.project_storage import ProjectStorage
 import os
 
 
@@ -22,16 +22,121 @@ def main():
     # Sidebar for project inputs
     st.sidebar.header("Project Configuration")
 
-    project_name = st.sidebar.text_input("Project Name", value="My Project")
-    team_size = st.sidebar.number_input("Team Size", min_value=1, max_value=50, value=3)
-    risk_level = st.sidebar.selectbox("Risk Level", ["low", "medium", "high"], index=1)
+    # Initialize project storage
+    storage = ProjectStorage()
+
+    # Initialize session state
+    if 'tasks' not in st.session_state:
+        st.session_state.tasks = []
+    if 'project_name' not in st.session_state:
+        st.session_state.project_name = "My Project"
+    if 'team_size' not in st.session_state:
+        st.session_state.team_size = 3
+    if 'risk_level' not in st.session_state:
+        st.session_state.risk_level = "medium"
+
+    # Save/Load section
+    with st.sidebar.expander("💾 Save/Load Project", expanded=False):
+        # Save current project
+        if st.session_state.tasks:
+            if st.button("💾 Save Current Project", use_container_width=True):
+                try:
+                    # Create temporary project to save
+                    task_objects = [
+                        Task(
+                            name=t['name'],
+                            estimated_days=t['days'],
+                            cost_per_day=t['cost_per_day'],
+                            task_id=t['id'],
+                            dependencies=t['dependencies']
+                        )
+                        for t in st.session_state.tasks
+                    ]
+
+                    temp_project = Project(
+                        name=st.session_state.project_name,
+                        tasks=task_objects,
+                        team_size=st.session_state.team_size,
+                        risk_level=st.session_state.risk_level
+                    )
+
+                    filepath = storage.save_project(temp_project)
+                    st.success(f"✅ Project saved!")
+                except Exception as e:
+                    st.error(f"Error saving: {e}")
+
+        # Load saved project
+        saved_projects = storage.list_saved_projects()
+
+        if saved_projects:
+            st.markdown("**Load Project:**")
+
+            project_options = {
+                f"{p['name']} ({p['saved_at'][:10]})": p['filepath']
+                for p in saved_projects
+            }
+
+            selected_project = st.selectbox(
+                "Select a project",
+                options=list(project_options.keys()),
+                label_visibility="collapsed"
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("📂 Load", use_container_width=True):
+                    try:
+                        filepath = project_options[selected_project]
+                        loaded_project = storage.load_project(filepath)
+
+                        # Update session state
+                        st.session_state.tasks = [
+                            {
+                                'name': task.name,
+                                'id': task.task_id,
+                                'days': task.estimated_days,
+                                'cost_per_day': task.cost_per_day,
+                                'dependencies': task.dependencies
+                            }
+                            for task in loaded_project.tasks
+                        ]
+
+                        st.session_state.project_name = loaded_project.name
+                        st.session_state.team_size = loaded_project.team_size
+                        st.session_state.risk_level = loaded_project.risk_level
+
+                        st.success(f"✅ Loaded: {loaded_project.name}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error loading: {e}")
+
+            with col2:
+                if st.button("🗑️ Delete", use_container_width=True):
+                    filepath = project_options[selected_project]
+                    if storage.delete_project(filepath):
+                        st.success("✅ Deleted")
+                        st.rerun()
+                    else:
+                        st.error("❌ Delete failed")
+        else:
+            st.info("No saved projects yet")
+
+    st.sidebar.markdown("---")
+
+    # Project inputs with session state
+    project_name = st.sidebar.text_input("Project Name", value=st.session_state.project_name)
+    team_size = st.sidebar.number_input("Team Size", min_value=1, max_value=50, value=st.session_state.team_size)
+    risk_level = st.sidebar.selectbox("Risk Level", ["low", "medium", "high"],
+                                      index=["low", "medium", "high"].index(st.session_state.risk_level))
+
+    # Update session state
+    st.session_state.project_name = project_name
+    st.session_state.team_size = team_size
+    st.session_state.risk_level = risk_level
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("Add Tasks")
-
-    # Initialize session state for tasks
-    if 'tasks' not in st.session_state:
-        st.session_state.tasks = []
 
     # Task input form
     with st.sidebar.form("task_form", clear_on_submit=True):
@@ -113,7 +218,7 @@ def main():
             st.warning("⚠️ Dependency Issues:\n" + "\n".join(f"- {e}" for e in errors))
 
         # Create tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["📋 Overview", "📈 Analysis", "🎲 Monte Carlo", "📊 Charts"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📋 Overview", "📈 Analysis", "🎲 Monte Carlo", "📊 Charts & Reports"])
 
         # TAB 1: Overview
         with tab1:
@@ -260,90 +365,71 @@ def main():
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                # TAB 4: Charts & Reports
-                with tab4:
-                    col1, col2 = st.columns(2)
+        # TAB 4: Charts & Reports
+        with tab4:
+            st.subheader("📊 Visualization Charts")
 
-                    with col1:
-                        st.subheader("📊 Visualization Charts")
+            if st.button("Generate All Charts", type="primary", key="gen_charts"):
+                with st.spinner("Generating charts..."):
+                    visualizer = ProjectVisualizer(project)
 
-                        if st.button("Generate All Charts", type="primary", key="gen_charts"):
-                            with st.spinner("Generating charts..."):
-                                visualizer = ProjectVisualizer(project)
+                    simulation_result = st.session_state.get('simulation_result', None)
+                    charts = visualizer.generate_all_charts(simulation_result)
 
-                                simulation_result = st.session_state.get('simulation_result', None)
-                                charts = visualizer.generate_all_charts(simulation_result)
+                    st.session_state.charts = charts
 
-                                st.session_state.charts = charts
+                st.success("✅ Charts generated!")
 
-                            st.success("✅ Charts generated!")
+            if 'charts' in st.session_state:
+                charts = st.session_state.charts
 
-                        if 'charts' in st.session_state:
-                            charts = st.session_state.charts
+                # Display charts
+                if 'cost_breakdown' in charts and os.path.exists(charts['cost_breakdown']):
+                    st.image(charts['cost_breakdown'], caption="Cost Breakdown by Task")
 
-                            # Display charts
-                            if 'cost_breakdown' in charts and os.path.exists(charts['cost_breakdown']):
-                                st.image(charts['cost_breakdown'], caption="Cost Breakdown by Task")
+                if 'timeline_comparison' in charts and os.path.exists(charts['timeline_comparison']):
+                    st.image(charts['timeline_comparison'], caption="Timeline Comparison")
 
-                            if 'timeline_comparison' in charts and os.path.exists(charts['timeline_comparison']):
-                                st.image(charts['timeline_comparison'], caption="Timeline Comparison")
+                if 'critical_path' in charts and charts['critical_path'] and os.path.exists(charts['critical_path']):
+                    st.image(charts['critical_path'], caption="Critical Path")
 
-                            if 'critical_path' in charts and charts['critical_path'] and os.path.exists(
-                                    charts['critical_path']):
-                                st.image(charts['critical_path'], caption="Critical Path")
+                if 'risk_distribution' in charts and os.path.exists(charts['risk_distribution']):
+                    st.image(charts['risk_distribution'], caption="Risk Distribution")
 
-                            if 'risk_distribution' in charts and os.path.exists(charts['risk_distribution']):
-                                st.image(charts['risk_distribution'], caption="Risk Distribution")
+                if 'scenario_comparison' in charts and os.path.exists(charts['scenario_comparison']):
+                    st.image(charts['scenario_comparison'], caption="Scenario Comparison")
 
-                            if 'scenario_comparison' in charts and os.path.exists(charts['scenario_comparison']):
-                                st.image(charts['scenario_comparison'], caption="Scenario Comparison")
+            # PDF Report section
+            st.markdown("---")
+            st.subheader("📄 PDF Report")
 
-                    with col2:
-                        st.subheader("📅 Gantt Chart")
+            if st.button("📥 Generate PDF Report", type="primary", key="gen_pdf"):
+                with st.spinner("Generating PDF report..."):
+                    pdf_gen = PDFReportGenerator(project)
 
-                        if st.button("Generate Gantt Chart", type="primary", key="gen_gantt"):
-                            with st.spinner("Creating Gantt chart..."):
-                                gantt_gen = GanttChartGenerator(project)
-                                gantt_fig = gantt_gen.generate_gantt_chart()
+                    simulation_result = st.session_state.get('simulation_result', None)
+                    simulator = st.session_state.get('simulator', None)
+                    charts = st.session_state.get('charts', None)
 
-                                st.session_state.gantt_fig = gantt_fig
+                    pdf_path = pdf_gen.generate_full_report(
+                        simulation_result=simulation_result,
+                        simulator=simulator,
+                        chart_paths=charts
+                    )
 
-                            st.success("✅ Gantt chart created!")
+                    st.session_state.pdf_path = pdf_path
 
-                        if 'gantt_fig' in st.session_state:
-                            st.plotly_chart(st.session_state.gantt_fig, use_container_width=True)
+                st.success(f"✅ PDF report generated!")
 
-                    # PDF Report section
-                    st.markdown("---")
-                    st.subheader("📄 PDF Report")
-
-                    if st.button("📥 Generate PDF Report", type="primary", key="gen_pdf"):
-                        with st.spinner("Generating PDF report..."):
-                            pdf_gen = PDFReportGenerator(project)
-
-                            simulation_result = st.session_state.get('simulation_result', None)
-                            simulator = st.session_state.get('simulator', None)
-                            charts = st.session_state.get('charts', None)
-
-                            pdf_path = pdf_gen.generate_full_report(
-                                simulation_result=simulation_result,
-                                simulator=simulator,
-                                chart_paths=charts
-                            )
-
-                            st.session_state.pdf_path = pdf_path
-
-                        st.success(f"✅ PDF report generated!")
-
-                    if 'pdf_path' in st.session_state:
-                        with open(st.session_state.pdf_path, 'rb') as pdf_file:
-                            st.download_button(
-                                label="📥 Download PDF Report",
-                                data=pdf_file,
-                                file_name=os.path.basename(st.session_state.pdf_path),
-                                mime='application/pdf',
-                                type="primary"
-                            )
+            if 'pdf_path' in st.session_state:
+                with open(st.session_state.pdf_path, 'rb') as pdf_file:
+                    st.download_button(
+                        label="📥 Download PDF Report",
+                        data=pdf_file,
+                        file_name=os.path.basename(st.session_state.pdf_path),
+                        mime='application/pdf',
+                        type="primary"
+                    )
 
     except Exception as e:
         st.error(f"Error: {e}")

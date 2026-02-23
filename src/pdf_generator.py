@@ -91,10 +91,14 @@ class PDFReportGenerator:
         Returns:
             Path to generated PDF
         """
+        print("Starting PDF generation...")
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         project_slug = self.project.name.lower().replace(" ", "_")[:30]
         filename = f"{project_slug}_report_{timestamp}.pdf"
         filepath = os.path.join(self.output_dir, filename)
+
+        print("Creating PDF document...")
 
         # Create PDF document
         doc = SimpleDocTemplate(
@@ -109,41 +113,48 @@ class PDFReportGenerator:
         # Build content
         story = []
 
-        # Title page
+        print("Building title page...")
         story.extend(self._build_title_page())
         story.append(PageBreak())
 
-        # Executive summary
+        print("Building executive summary...")
         story.extend(self._build_executive_summary())
         story.append(Spacer(1, 0.2 * inch))
 
-        # Cost analysis
+        print("Building cost section...")
         story.extend(self._build_cost_section())
         story.append(Spacer(1, 0.2 * inch))
 
-        # Timeline analysis
+        print("Building timeline section...")
         story.extend(self._build_timeline_section())
         story.append(Spacer(1, 0.2 * inch))
 
-        # Critical path
+        print("Building critical path section...")
         story.extend(self._build_critical_path_section())
         story.append(PageBreak())
 
-        # Task breakdown
+        print("Building task breakdown...")
         story.extend(self._build_task_breakdown())
         story.append(PageBreak())
 
         # Monte Carlo results (if available)
         if simulation_result and simulator:
+            print("Building simulation section...")
             story.extend(self._build_simulation_section(simulation_result, simulator))
             story.append(PageBreak())
 
         # Charts (if available)
         if chart_paths:
+            print("Adding charts to PDF...")
             story.extend(self._build_charts_section(chart_paths))
 
-        # Build PDF
-        doc.build(story)
+        print("Building final PDF document...")
+        try:
+            doc.build(story)
+            print(f"PDF successfully saved to {filepath}")
+        except Exception as e:
+            print(f"Error building PDF: {e}")
+            raise
 
         return filepath
 

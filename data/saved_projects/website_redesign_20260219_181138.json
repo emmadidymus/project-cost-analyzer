@@ -1,0 +1,43 @@
+{
+  "name": "Website Redesign",
+  "team_size": 3,
+  "risk_level": "medium",
+  "description": "",
+  "saved_at": "2026-02-19T18:11:38.284382",
+  "tasks": [
+    {
+      "name": "Requirements Analysis",
+      "estimated_days": 5.0,
+      "cost_per_day": 1000,
+      "task_id": "requirements_analysi",
+      "dependencies": []
+    },
+    {
+      "name": "Mockup Design",
+      "estimated_days": 3.0,
+      "cost_per_day": 1100,
+      "task_id": "mockup_design",
+      "dependencies": [
+        "requirements_analysi"
+      ]
+    },
+    {
+      "name": "Frontend Development",
+      "estimated_days": 3.0,
+      "cost_per_day": 1300,
+      "task_id": "frontend_development",
+      "dependencies": [
+        "mockup_design"
+      ]
+    },
+    {
+      "name": "Testing and QA",
+      "estimated_days": 5.0,
+      "cost_per_day": 1700,
+      "task_id": "testing_and_qa",
+      "dependencies": [
+        "frontend_development"
+      ]
+    }
+  ]
+}
